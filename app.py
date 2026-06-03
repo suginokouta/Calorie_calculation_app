@@ -42,3 +42,6 @@ def handle_image(event):
         event.reply_token,
         TextSendMessage(text="画像を受け取りました")
     )
+
+if __name__ == "__main__":
+    app.run(port=5000)
