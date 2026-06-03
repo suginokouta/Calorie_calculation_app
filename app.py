@@ -6,6 +6,7 @@ from linebot.models import MessageEvent, TextMessage, TextSendMessage, ImageMess
 from dotenv import load_dotenv
 
 app = Flask(__name__)
+load_dotenv()
 
 # ご自身のAPIキーに置き換えてください
 LINE_CHANNEL_ACCESS_TOKEN = os.getenv('LINE_CHANNEL_ACCESS_TOKEN')
