@@ -4,7 +4,11 @@ venv/
 
 # Pythonのキャッシュ
 __pycache__/
+<<<<<<< HEAD
 *.py[cod]
 
 # その他のファイル
 ngrok.exe
+=======
+*.py[cod]
+>>>>>>> f4ab6f47488ee4ba13a3a5ed653c1176d6793df4
