@@ -1,0 +1,10 @@
+# 仮想環境
+venv/
+.env
+
+# Pythonのキャッシュ
+__pycache__/
+*.py[cod]
+
+# その他のファイル
+ngrok.exe
