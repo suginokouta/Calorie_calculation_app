@@ -4,6 +4,8 @@ from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
 from linebot.models import MessageEvent, TextMessage, TextSendMessage, ImageMessage
 from dotenv import load_dotenv
+from Calorie_estimation_from_images import GeminiHandler
+
 
 app = Flask(__name__)
 load_dotenv()
@@ -14,6 +16,9 @@ LINE_CHANNEL_SECRET = os.getenv('LINE_CHANNEL_SECRET')
 
 line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
 handler = WebhookHandler(LINE_CHANNEL_SECRET)
+
+# GeminiHandlerクラスのインスタンスを作成
+gemini_handler = GeminiHandler()
 
 @app.route("/callback", methods=['POST'])
 def callback():
@@ -37,10 +42,13 @@ def handle_image(event):
     with open(image_path, "wb") as f:
         for chunk in message_content.iter_content():
             f.write(chunk)
+    
+    # 画像を保存した後、GeminiHandlerを使って解析し、結果を取得
+    result_text = gemini_handler.analyze_meal(image_path)
             
     line_bot_api.reply_message(
         event.reply_token,
-        TextSendMessage(text="画像を受け取りました")
+        TextSendMessage(text=f"解析結果: {result_text}")
     )
 
 if __name__ == "__main__":
