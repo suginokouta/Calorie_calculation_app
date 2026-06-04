@@ -9,3 +9,4 @@ __pycache__/
 # その他のファイル
 ngrok.exe
 
+*.jpg

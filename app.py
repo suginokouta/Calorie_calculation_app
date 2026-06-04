@@ -48,7 +48,7 @@ def handle_image(event):
             
     line_bot_api.reply_message(
         event.reply_token,
-        TextSendMessage(text=f"解析結果: {result_text}")
+        TextSendMessage(text=f"解析結果: {result_text}kcal")
     )
 
 if __name__ == "__main__":
