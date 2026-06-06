@@ -5,7 +5,7 @@ from linebot.exceptions import InvalidSignatureError
 from linebot.models import MessageEvent, TextMessage, TextSendMessage, ImageMessage
 from dotenv import load_dotenv
 from Calorie_estimation_from_images import GeminiHandler
-
+from notion_handler import NotionHandler
 
 app = Flask(__name__)
 load_dotenv()
@@ -19,6 +19,8 @@ handler = WebhookHandler(LINE_CHANNEL_SECRET)
 
 # GeminiHandlerクラスのインスタンスを作成
 gemini_handler = GeminiHandler()
+# NotionHandlerクラスのインスタンスを作成
+notion_handler = NotionHandler()
 
 @app.route("/callback", methods=['POST'])
 def callback():
@@ -45,10 +47,31 @@ def handle_image(event):
     
     # 画像を保存した後、GeminiHandlerを使って解析し、結果を取得
     result_text = gemini_handler.analyze_meal(image_path)
+    
+    # 解析結果をNotionに記録
+    try:
+        # カンマで分割して余分な空白を削除
+        menu_name, calories_str = result_text.split(",")
+        menu_name = menu_name.strip()
+        calories = int(calories_str.strip())
+        
+        # NotionHandlerに書き込みを依頼
+        success = notion_handler.add_record(menu_name, calories)
+        
+        if success:
+            reply_message = f"【記録完了】\nメニュー: {menu_name}\nカロリー: {calories}kcal"
+        else:
+            reply_message = "Notionへの記録に失敗しました。"
             
+    except Exception as e:
+        # AIの返答が予期せぬ形式だった場合のエラーハンドリング
+        print(f"データ処理エラー: {e}")
+        reply_message = f"カロリーの読み取りに失敗しました。\nAIの推測結果: {result_text}"
+
+    # 3. LINEに結果を返信
     line_bot_api.reply_message(
         event.reply_token,
-        TextSendMessage(text=f"解析結果: {result_text}kcal")
+        TextSendMessage(text=reply_message)
     )
 
 if __name__ == "__main__":
