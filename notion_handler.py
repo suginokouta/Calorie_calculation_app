@@ -25,7 +25,7 @@ class NotionHandler:
                             }
                         ]
                     },
-                    "カロリー (kcal)": {
+                    "カロリー(kcal)": {
                         "number": int(calories) 
                     }
                 }
