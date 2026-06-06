@@ -4,7 +4,7 @@ from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
 from linebot.models import MessageEvent, TextMessage, TextSendMessage, ImageMessage
 from dotenv import load_dotenv
-from Calorie_estimation_from_images import GeminiHandler
+from gemini_handler import GeminiHandler
 from notion_handler import NotionHandler
 
 app = Flask(__name__)
