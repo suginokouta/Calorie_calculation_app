@@ -4,8 +4,10 @@ from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
 from linebot.models import MessageEvent, TextMessage, TextSendMessage, ImageMessage
 from dotenv import load_dotenv
+
 from gemini_handler import GeminiHandler
 from notion_handler import NotionHandler
+from process_and_compress_image import resize_image
 
 app = Flask(__name__)
 load_dotenv()
@@ -37,16 +39,24 @@ def handle_image(event):
     # 画像のバイナリデータをLINEサーバーから取得
     message_content = line_bot_api.get_message_content(event.message.id)
     
+    # 取得した画像のバイナリデータを処理してリサイズ
+    processed_image = resize_image(message_content.content)
+
     # 画像を一時的に保存するためのファイル名を指定
     image_path = "temp_image.jpg"
+    processed_image_path = "processed_image.jpg"
     
-    # 取得したデータをファイルとして書き込み（保存）
+    
+    # 元画像：取得したデータをファイルとして書き込み（保存）
     with open(image_path, "wb") as f:
         for chunk in message_content.iter_content():
             f.write(chunk)
-    
+            
+    with open(processed_image_path, "wb") as f:
+        processed_image.save(f, format="JPEG")
+
     # 画像を保存した後、GeminiHandlerを使って解析し、結果を取得
-    result_text = gemini_handler.analyze_meal(image_path)
+    result_text = gemini_handler.analyze_meal(processed_image_path)
     
     # 解析結果をNotionに記録
     try:
