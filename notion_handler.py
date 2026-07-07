@@ -1,5 +1,6 @@
 import os
 from notion_client import Client
+from datetime import datetime, timezone, timedelta
 
 class NotionHandler:
     def __init__(self):
@@ -27,6 +28,11 @@ class NotionHandler:
                     },
                     "カロリー(kcal)": {
                         "number": int(calories) 
+                    },
+                    "記録日時": {
+                        "date": {
+                            "start": self.__get_current_date()
+                        }
                     }
                 }
             )
@@ -34,3 +40,9 @@ class NotionHandler:
         except Exception as e:
             print(f"Notion書き込みエラー: {e}")
             return False
+    
+    def __get_current_date(self):
+        """現在の日付を取得する"""
+        jst = timezone(timedelta(hours=9))  # 日本標準時 (JST)
+        now = datetime.now(jst)
+        return now.isoformat()
