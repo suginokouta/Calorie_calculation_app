@@ -90,50 +90,31 @@ def handle_image(event):
     # 画像のバイナリデータをLINEサーバーから取得
     message_content = line_bot_api.get_message_content(event.message.id)
     
-    # 取得した画像のバイナリデータを処理してリサイズ
+    # 取得した画像のバイナリデータをオンメモリで処理・リサイズ（PIL.Imageオブジェクト）
     processed_image = resize_image(message_content.content)
 
-    # 画像を一時的に保存するためのファイル名を指定（メッセージIDでユニーク化）
-    image_path = f"temp_image_{event.message.id}.jpg"
-    processed_image_path = f"processed_image_{event.message.id}.jpg"
+    # ディスクに書き込まず、メモリ上の画像オブジェクトを直接GeminiHandlerに渡して解析
+    result_text = gemini_handler.analyze_meal(processed_image)
     
+    # 解析結果の整形
     try:
-        # 元画像：取得したデータをファイルとして書き込み（保存）
-        with open(image_path, "wb") as f:
-            for chunk in message_content.iter_content():
-                f.write(chunk)
-                
-        with open(processed_image_path, "wb") as f:
-            processed_image.save(f, format="JPEG")
-
-        # 画像を保存した後、GeminiHandlerを使って解析し、結果を取得
-        result_text = gemini_handler.analyze_meal(processed_image_path)
+        # カンマで分割して余分な空白を削除
+        menu_name, calories_str = result_text.split(",")
+        menu_name = menu_name.strip()
+        calories = int(calories_str.strip())
         
-        # 解析結果の整形
-        try:
-            # カンマで分割して余分な空白を削除
-            menu_name, calories_str = result_text.split(",")
-            menu_name = menu_name.strip()
-            calories = int(calories_str.strip())
+        reply_message = f"🍽️【AIカロリー診断】\nメニュー: {menu_name}\n推定カロリー: {calories} kcal"
             
-            reply_message = f"🍽️【AIカロリー診断】\nメニュー: {menu_name}\n推定カロリー: {calories} kcal"
-                
-        except Exception as e:
-            # AIの返答が予期せぬ形式だった場合のエラーハンドリング
-            print(f"データ処理エラー: {e}")
-            reply_message = f"カロリーの読み取りに失敗しました。\nAIの推測結果: {result_text}"
+    except Exception as e:
+        # AIの返答が予期せぬ形式だった場合のエラーハンドリング
+        print(f"データ処理エラー: {e}")
+        reply_message = f"カロリーの読み取りに失敗しました。\nAIの推測結果: {result_text}"
 
-        # LINEに結果を返信
-        line_bot_api.reply_message(
-            event.reply_token,
-            TextSendMessage(text=reply_message)
-        )
-    finally:
-        # サーバーの容量を圧迫しないよう、処理完了後に画像を削除
-        if os.path.exists(image_path):
-            os.remove(image_path)
-        if os.path.exists(processed_image_path):
-            os.remove(processed_image_path)
+    # LINEに結果を返信
+    line_bot_api.reply_message(
+        event.reply_token,
+        TextSendMessage(text=reply_message)
+    )
 
 if __name__ == "__main__":
     app.run(port=5000)

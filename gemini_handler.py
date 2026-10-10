@@ -15,13 +15,17 @@ class GeminiHandler:
         # Geminiのモデルを指定して初期化
         self.model = genai.GenerativeModel('gemini-3.5-flash')
 
-    def analyze_meal(self, image_path):
+    def analyze_meal(self, image_input):
         """
-        保存された食事の画像を解析し、メニュー名とカロリーを推測する
+        食事の画像を解析し、メニュー名とカロリーを推測する
+        image_input: 画像のファイルパス (str) または PIL.Image.Image オブジェクト
         """
         try:
-            # Pillowライブラリで画像を読み込む
-            img = PIL.Image.open(image_path)
+            # 引数がファイルパスの場合はImageを開き、PIL.Imageオブジェクトならそのまま使用
+            if isinstance(image_input, str):
+                img = PIL.Image.open(image_input)
+            else:
+                img = image_input
             
             # AIへの指示（プロンプト）
             # Notionに記録しやすいよう、シンプルな形式で出力させます
