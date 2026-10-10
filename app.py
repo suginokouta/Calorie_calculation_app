@@ -1,4 +1,5 @@
 import os
+from datetime import datetime, timezone, timedelta
 from flask import Flask, request, abort
 from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
@@ -16,6 +17,57 @@ load_dotenv()
 # LINE API設定
 LINE_CHANNEL_ACCESS_TOKEN = os.getenv('LINE_CHANNEL_ACCESS_TOKEN')
 LINE_CHANNEL_SECRET = os.getenv('LINE_CHANNEL_SECRET')
+
+# セキュリティ・アクセス制限設定
+# 1日あたりの診断上限回数（デフォルト: 10回、0以下の場合は無制限）
+DAILY_LIMIT_PER_USER = int(os.getenv('DAILY_LIMIT_PER_USER', '10'))
+# 許可されたLINE User ID（カンマ区切り、未指定時は全ユーザー許可）
+ALLOWED_USER_IDS = [
+    uid.strip() for uid in os.getenv('ALLOWED_USER_IDS', '').split(',') if uid.strip()
+]
+
+# ユーザーごとの利用回数記録（オンメモリ）: {user_id: {"date": "YYYY-MM-DD", "count": int}}
+user_daily_counts = {}
+
+def check_user_access(user_id: str):
+    """
+    ユーザーのアクセス権限（ホワイトリスト）および本日の利用回数を判定する。
+    戻り値: (利用可能か: bool, 拒否メッセージまたは空文字: str)
+    """
+    # 1. ホワイトリストの検証（設定されている場合のみ）
+    if ALLOWED_USER_IDS and user_id not in ALLOWED_USER_IDS:
+        return False, "申し訳ありません。このBotは現在、許可されたユーザーのみ利用可能です。"
+
+    # 2. 1日の利用回数制限の検証
+    if DAILY_LIMIT_PER_USER > 0:
+        jst = timezone(timedelta(hours=9))
+        today_str = datetime.now(jst).strftime('%Y-%m-%d')
+        
+        user_record = user_daily_counts.get(user_id)
+        if not user_record or user_record.get('date') != today_str:
+            user_daily_counts[user_id] = {'date': today_str, 'count': 0}
+        
+        if user_daily_counts[user_id]['count'] >= DAILY_LIMIT_PER_USER:
+            return False, f"本日の診断上限（1日{DAILY_LIMIT_PER_USER}回）に達しました。\n日付が変わりましたらまたご利用ください！"
+            
+    return True, ""
+
+def record_user_usage(user_id: str):
+    """
+    ユーザーの利用回数を1増やし、本日の残り利用可能回数を返す。
+    無制限の場合は -1 を返す。
+    """
+    if DAILY_LIMIT_PER_USER <= 0:
+        return -1
+        
+    jst = timezone(timedelta(hours=9))
+    today_str = datetime.now(jst).strftime('%Y-%m-%d')
+    user_record = user_daily_counts.setdefault(user_id, {'date': today_str, 'count': 0})
+    if user_record['date'] != today_str:
+        user_record['date'] = today_str
+        user_record['count'] = 0
+    user_record['count'] += 1
+    return max(0, DAILY_LIMIT_PER_USER - user_record['count'])
 
 line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
 handler = WebhookHandler(LINE_CHANNEL_SECRET)
@@ -93,6 +145,18 @@ def callback():
 
 @handler.add(MessageEvent, message=ImageMessage)
 def handle_image(event):
+    user_id = getattr(event.source, 'user_id', None)
+
+    # アクセス権限（ホワイトリスト）および本日の利用回数制限チェック
+    if user_id:
+        is_allowed, error_msg = check_user_access(user_id)
+        if not is_allowed:
+            line_bot_api.reply_message(
+                event.reply_token,
+                TextSendMessage(text=error_msg)
+            )
+            return
+
     # 画像のバイナリデータをLINEサーバーから取得
     message_content = line_bot_api.get_message_content(event.message.id)
     
@@ -109,7 +173,11 @@ def handle_image(event):
         menu_name = menu_name.strip()
         calories = int(calories_str.strip())
         
-        reply_message = f"🍽️【AIカロリー診断】\nメニュー: {menu_name}\n推定カロリー: {calories} kcal"
+        # 診断成功時に利用回数をカウントし、残り回数を取得
+        remaining = record_user_usage(user_id) if user_id else -1
+        limit_notice = f"\n(本日の残り診断可能回数: {remaining}回)" if remaining >= 0 else ""
+
+        reply_message = f"🍽️【AIカロリー診断】\nメニュー: {menu_name}\n推定カロリー: {calories} kcal{limit_notice}"
             
     except Exception as e:
         # AIの返答が予期せぬ形式だった場合のエラーハンドリング
