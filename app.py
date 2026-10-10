@@ -21,6 +21,60 @@ handler = WebhookHandler(LINE_CHANNEL_SECRET)
 # GeminiHandlerクラスのインスタンスを作成
 gemini_handler = GeminiHandler()
 
+@app.route("/", methods=['GET'])
+def index():
+    return """<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI食事カロリー診断Bot</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #f7f9fa;
+            color: #333;
+            text-align: center;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .card {
+            background: white;
+            padding: 40px 30px;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            max-width: 480px;
+            width: 100%;
+        }
+        h1 { font-size: 24px; margin-bottom: 12px; }
+        .status {
+            display: inline-block;
+            background: #e6f7ec;
+            color: #0b8a36;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 14px;
+            margin-bottom: 16px;
+        }
+        p { font-size: 15px; line-height: 1.6; color: #666; margin: 8px 0; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>🍽️ AI食事カロリー診断Bot</h1>
+        <div class="status">● サーバー稼働中（スタンバイ完了）</div>
+        <p>サーバーが正常に起動しました！</p>
+        <p>LINE公式アカウントのトーク画面から食事の写真を送信してください。</p>
+    </div>
+</body>
+</html>""", 200
+
 @app.route("/callback", methods=['POST'])
 def callback():
     signature = request.headers['X-Line-Signature']
