@@ -9,6 +9,8 @@ from gemini_handler import GeminiHandler
 from process_and_compress_image import resize_image
 
 app = Flask(__name__)
+# リクエストボディの最大サイズ制限（DoS対策: 10MB）
+app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024
 load_dotenv()
 
 # LINE API設定
@@ -77,7 +79,11 @@ def index():
 
 @app.route("/callback", methods=['POST'])
 def callback():
-    signature = request.headers['X-Line-Signature']
+    # X-Line-Signature ヘッダーの存在確認（未設定の場合は KeyError を防ぎ 400 Bad Request を返す）
+    signature = request.headers.get('X-Line-Signature')
+    if not signature:
+        abort(400)
+
     body = request.get_data(as_text=True)
     try:
         handler.handle(body, signature)
